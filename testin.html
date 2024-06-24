@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ring Center Position Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h2>Ring Center Position Visualization</h2>
+    <div>
+        <label for="boundingBox">Bounding Box (x1, y1, x2, y2):</label>
+        <input type="text" id="boundingBox" value="100,100,200,200">
+        <br>
+        <label for="ringDiameter">Ring Diameter (real world):</label>
+        <input type="number" id="ringDiameter" value="10">
+        <br>
+        <label for="imageWidth">Image Width:</label>
+        <input type="number" id="imageWidth" value="400">
+        <br>
+        <label for="imageHeight">Image Height:</label>
+        <input type="number" id="imageHeight" value="400">
+        <br>
+        <label for="fov">Field of View (horizontal, degrees):</label>
+        <input type="number" id="fov" value="60">
+        <br>
+        <button onclick="calculatePosition()">Calculate Position</button>
+    </div>
+    <div id="output"></div>
+    <div id="plot"></div>
+
+    <script>
+        function calculatePosition() {
+            // Get input values
+            const boundingBox = document.getElementById('boundingBox').value.split(',').map(Number);
+            const ringDiameter = Number(document.getElementById('ringDiameter').value);
+            const imageWidth = Number(document.getElementById('imageWidth').value);
+            const imageHeight = Number(document.getElementById('imageHeight').value);
+            const fov = Number(document.getElementById('fov').value);
+
+            // Calculate image coordinates of the ring center
+            const u = (boundingBox[0] + boundingBox[2]) / 2;
+            const v = (boundingBox[1] + boundingBox[3]) / 2;
+
+            // Convert to NDC
+            const x_ndc = 2 * u / imageWidth - 1;
+            const y_ndc = 1 - 2 * v / imageHeight;
+
+            // Calculate aspect ratio and viewport coordinates
+            const aspectRatio = imageWidth / imageHeight;
+            const theta_h = fov * Math.PI / 180;
+            const theta_v = 2 * Math.atan(Math.tan(theta_h / 2) / aspectRatio);
+
+            const x_v = x_ndc * Math.tan(theta_h / 2);
+            const y_v = y_ndc * Math.tan(theta_v / 2);
+
+            // Calculate Z coordinate
+            const boundingBoxHeight = boundingBox[3] - boundingBox[1];
+            const Z = (ringDiameter * imageHeight) / (2 * boundingBoxHeight * Math.tan(theta_v / 2));
+
+            // Calculate 3D position
+            const X = x_v * Z;
+            const Y = y_v * Z;
+
+            // Display output
+            document.getElementById('output').innerHTML = `
+                <p>3D Position of Ring Center: (${X.toFixed(2)}, ${Y.toFixed(2)}, ${Z.toFixed(2)})</p>
+            `;
+
+            // Plot the position
+            plotPosition(X, Y, Z);
+        }
+
+        function plotPosition(X, Y, Z) {
+            const trace = {
+                x: [X],
+                y: [Y],
+                z: [Z],
+                mode: 'markers',
+                marker: {
+                    size: 10,
+                    color: 'rgb(255, 0, 0)',
+                },
+                type: 'scatter3d'
+            };
+
+            const data = [trace];
+
+            const layout = {
+                margin: {
+                    l: 0,
+                    r: 0,
+                    b: 0,
+                    t: 0
+                },
+                scene: {
+                    xaxis: { title: 'X' },
+                    yaxis: { title: 'Y' },
+                    zaxis: { title: 'Z' }
+                }
+            };
+
+            Plotly.newPlot('plot', data, layout);
+        }
+    </script>
+</body>
+</html>
